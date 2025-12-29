@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, Calculator, BarChart3, FileText, Database, TrendingUp, RefreshCw, MessageCircle, TrendingDown } from 'lucide-react';
+import { Upload, Calculator, BarChart3, FileText, Database, TrendingUp, RefreshCw, MessageCircle, TrendingDown, AlertTriangle } from 'lucide-react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import DataInput from './components/DataInput';
@@ -9,6 +9,7 @@ import Report from './components/Report';
 import CalculatorTab from './components/CalculatorTab';
 import LDAChat from './components/LDAChat';
 import DegradationAnalysis from './components/DegradationAnalysis';
+import FailureProbabilityChart from './components/FailureProbabilityChart';
 import { DataPoint, DistributionResult, AnalysisResults } from './types';
 
 function App() {
@@ -43,6 +44,7 @@ function App() {
     { id: 'report', label: 'Relatório', icon: FileText },
     { id: 'calculator', label: 'Calculadora', icon: Calculator },
     { id: 'degradation', label: 'Degradação (DA)', icon: TrendingDown },
+    { id: 'failure-curve', label: 'Curva de Falha', icon: AlertTriangle },
     { id: 'chat', label: 'LDAChat', icon: MessageCircle },
   ];
 
@@ -155,13 +157,17 @@ function App() {
             )}
             
             {activeTab === 'degradation' && (
-              <DegradationAnalysis 
+              <DegradationAnalysis
                 equipmentName={equipmentName}
               />
             )}
-            
+
+            {activeTab === 'failure-curve' && (
+              <FailureProbabilityChart />
+            )}
+
             {activeTab === 'chat' && (
-              <LDAChat 
+              <LDAChat
                 analysisResults={analysisResults}
                 selectedDistribution={selectedDistribution}
               />

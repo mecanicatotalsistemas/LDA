@@ -236,8 +236,7 @@ const Charts: React.FC<ChartsProps> = ({
 
     return (
       <>
-        <div 
-          id={chartElementId}
+        <div
           id={chartElementId}
           className={`bg-white rounded-xl border-2 transition-all duration-300 ${
             isHovered ? 'border-blue-300 shadow-xl scale-105' : 'border-gray-200 shadow-lg'
