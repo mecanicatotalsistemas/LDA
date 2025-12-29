@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, Send, Bot, User, Calculator, HelpCircle, Zap } from 'lucide-react';
-import { AnalysisResults } from '../types';
+import { AnalysisResults, DegradationResults } from '../types';
 
 interface Message {
   id: string;
@@ -12,11 +12,13 @@ interface Message {
 interface LDAChatProps {
   analysisResults: AnalysisResults | null;
   selectedDistribution: string;
+  degradationResults?: DegradationResults | null;
 }
 
 const LDAChat: React.FC<LDAChatProps> = ({
   analysisResults,
-  selectedDistribution
+  selectedDistribution,
+  degradationResults = null
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -178,6 +180,32 @@ const LDAChat: React.FC<LDAChatProps> = ({
       return `📊 **B90 (90% de Falha):**\n\nB90 = ${dist.b90.toFixed(2)} horas\n\n📉 Este é o tempo em que 90% dos equipamentos terão falhado.\n\n⚠️ Apenas 10% ainda estarão funcionando.`;
     }
 
+    if (lowerQuestion.includes('degradação') || lowerQuestion.includes('degradacao')) {
+      if (!degradationResults) {
+        return "❌ Nenhuma análise de degradação disponível. Execute a análise DA primeiro na aba 'Degradação (DA)'.";
+      }
+      
+      if (lowerQuestion.includes('tempo') && (lowerQuestion.includes('falha') || lowerQuestion.includes('falhar'))) {
+        const estimatedTime = degradationResults.estimatedFailureTime;
+        if (isFinite(estimatedTime)) {
+          return `⏰ **Tempo Estimado de Falha por Degradação:**\n\nT_falha = ${estimatedTime.toFixed(2)} unidades\n\n📊 **Modelo usado:** ${degradationResults.models[degradationResults.bestModel as keyof typeof degradationResults.models].name}\n📈 **Qualidade do ajuste:** R² = ${(degradationResults.models[degradationResults.bestModel as keyof typeof degradationResults.models].rSquared * 100).toFixed(1)}%\n\n⚠️ **Limite crítico:** ${degradationResults.failureLimit}\n\n🔧 **Recomendação:** Planeje manutenção preventiva antes deste tempo.`;
+        } else {
+          return `❌ **Tempo de falha não determinado**\n\nO modelo de degradação não conseguiu calcular um tempo específico de falha com base nos dados fornecidos.\n\n🔍 **Possíveis causas:**\n• Dados insuficientes\n• Modelo inadequado\n• Limite de falha muito alto/baixo\n\n💡 **Sugestão:** Revise os dados e o limite crítico.`;
+        }
+      }
+      
+      if (lowerQuestion.includes('modelo') || lowerQuestion.includes('ajuste')) {
+        const bestModel = degradationResults.models[degradationResults.bestModel as keyof typeof degradationResults.models];
+        const paramText = Object.entries(bestModel.parameters)
+          .map(([param, value]) => `• ${param}: ${value.toFixed(4)}`)
+          .join('\n');
+        
+        return `📈 **Modelo de Degradação Selecionado:**\n\n🔧 **Tipo:** ${bestModel.name}\n📊 **Qualidade (R²):** ${(bestModel.rSquared * 100).toFixed(1)}%\n\n📋 **Parâmetros:**\n${paramText}\n\n📈 **Taxa de degradação:** ${degradationResults.dataStats.degradationRate.toFixed(3)} unidades/tempo\n📊 **Valor atual:** ${degradationResults.dataStats.currentValue.toFixed(2)}`;
+      }
+      
+      return `🧬 **Análise de Degradação Disponível:**\n\n📊 **Modelo:** ${degradationResults.models[degradationResults.bestModel as keyof typeof degradationResults.models].name}\n⏰ **Tempo estimado de falha:** ${isFinite(degradationResults.estimatedFailureTime) ? degradationResults.estimatedFailureTime.toFixed(2) + ' unidades' : 'Não determinado'}\n📈 **Qualidade do ajuste:** R² = ${(degradationResults.models[degradationResults.bestModel as keyof typeof degradationResults.models].rSquared * 100).toFixed(1)}%\n\n❓ **Pergunte sobre:**\n• "Quando vai falhar por degradação?"\n• "Qual o modelo de degradação?"\n• "Como está a taxa de degradação?"`;
+    }
+
     // MTTF questions
     if (lowerQuestion.includes('mttf') || lowerQuestion.includes('tempo médio')) {
       return `⏱️ **MTTF (Tempo Médio até Falha):**\n\nMTTF = ${dist.mttf.toFixed(2)} horas\n\n📊 Este é o tempo médio esperado até a primeira falha.\n\n🎯 Para a distribuição ${dist.name}, este valor representa a expectativa matemática do tempo de vida.`;
@@ -212,6 +240,7 @@ const LDAChat: React.FC<LDAChatProps> = ({
 
     // Default response with suggestions
     return `🤔 **Não entendi sua pergunta.**\n\n💡 **Experimente perguntar:**\n\n🎯 **Cálculos:**\n• "Qual a confiabilidade em 100 horas?"\n• "Probabilidade de falha em 200 horas?"\n• "Taxa de falha em 150 horas?"\n• "Tempo para 10% de falha?"\n\n📊 **Métricas:**\n• "Qual o B10?" / "B50?" / "B90?"\n• "Qual o MTTF?"\n• "Quais os parâmetros?"\n\n📚 **Explicações:**\n• "Explique confiabilidade"\n• "O que significa taxa de falha?"\n• "Resumo da análise"`;
+    return `🤔 **Não entendi sua pergunta.**\n\n💡 **Experimente perguntar:**\n\n🎯 **Cálculos LDA:**\n• "Qual a confiabilidade em 100 horas?"\n• "Probabilidade de falha em 200 horas?"\n• "Taxa de falha em 150 horas?"\n• "Tempo para 10% de falha?"\n\n🧬 **Degradação (DA):**\n• "Quando vai falhar por degradação?"\n• "Qual o modelo de degradação?"\n• "Como está a taxa de degradação?"\n\n📊 **Métricas:**\n• "Qual o B10?" / "B50?" / "B90?"\n• "Qual o MTTF?"\n• "Quais os parâmetros?"\n\n📚 **Explicações:**\n• "Explique confiabilidade"\n• "O que significa taxa de falha?"\n• "Resumo da análise"`;
   };
 
   const handleSendMessage = async () => {
@@ -254,6 +283,7 @@ const LDAChat: React.FC<LDAChatProps> = ({
     "Qual a confiabilidade em 100 horas?",
     "Probabilidade de falha em 200 horas?",
     "Qual o B50?",
+    "Quando vai falhar por degradação?",
     "Resumo da análise"
   ];
 

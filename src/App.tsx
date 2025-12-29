@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, Calculator, BarChart3, FileText, Database, TrendingUp, RefreshCw, MessageCircle } from 'lucide-react';
+import { Upload, Calculator, BarChart3, FileText, Database, TrendingUp, RefreshCw, MessageCircle, TrendingDown } from 'lucide-react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import DataInput from './components/DataInput';
@@ -8,6 +8,7 @@ import Charts from './components/Charts';
 import Report from './components/Report';
 import CalculatorTab from './components/CalculatorTab';
 import LDAChat from './components/LDAChat';
+import DegradationAnalysis from './components/DegradationAnalysis';
 import { DataPoint, DistributionResult, AnalysisResults } from './types';
 
 function App() {
@@ -41,6 +42,7 @@ function App() {
     { id: 'charts', label: 'Gráficos', icon: BarChart3 },
     { id: 'report', label: 'Relatório', icon: FileText },
     { id: 'calculator', label: 'Calculadora', icon: Calculator },
+    { id: 'degradation', label: 'Degradação (DA)', icon: TrendingDown },
     { id: 'chat', label: 'LDAChat', icon: MessageCircle },
   ];
 
@@ -149,6 +151,12 @@ function App() {
               <CalculatorTab 
                 analysisResults={analysisResults}
                 selectedDistribution={selectedDistribution}
+              />
+            )}
+            
+            {activeTab === 'degradation' && (
+              <DegradationAnalysis 
+                equipmentName={equipmentName}
               />
             )}
             

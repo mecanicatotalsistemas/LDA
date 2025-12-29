@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import { DataPoint, AnalysisResults } from '../types';
+import { DataPoint, AnalysisResults, DegradationResults, DegradationPoint } from '../types';
 
 // Utility function to capture chart as image
 export const captureChartAsImage = async (elementId: string): Promise<string> => {
@@ -317,6 +317,77 @@ export const exportToExcel = (
   XLSX.writeFile(wb, `Relatorio_LDA_${equipmentName || 'Analise'}_${new Date().toISOString().split('T')[0]}.xlsx`);
 };
 
+// Generate Excel Report for Degradation Analysis
+export const exportDegradationToExcel = (
+  data: DegradationPoint[],
+  results: DegradationResults,
+  equipmentName: string
+): void => {
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Input Data
+  const dataSheet = data.map((point, index) => ({
+    'Índice': index + 1,
+    'Tempo': point.time,
+    'Valor Medido': point.value,
+    'Status': point.status === 1 ? 'Falhado' : 'Ativo'
+  }));
+  
+  const ws1 = XLSX.utils.json_to_sheet(dataSheet);
+  XLSX.utils.book_append_sheet(wb, ws1, 'Dados de Degradação');
+
+  // Sheet 2: Model Parameters
+  const modelData: any[] = [];
+  Object.entries(results.models).forEach(([key, model]) => {
+    const row: any = {
+      'Modelo': model.name,
+      'Recomendado': key === results.bestModel ? 'SIM' : 'NÃO',
+      'R²': model.rSquared,
+      'Tempo de Falha': isFinite(model.timeToFailure(results.failureLimit)) 
+        ? model.timeToFailure(results.failureLimit) 
+        : 'N/A'
+    };
+    
+    // Add parameters
+    Object.entries(model.parameters).forEach(([param, value]) => {
+      row[param] = value;
+    });
+    
+    modelData.push(row);
+  });
+  
+  const ws2 = XLSX.utils.json_to_sheet(modelData);
+  XLSX.utils.book_append_sheet(wb, ws2, 'Modelos');
+
+  // Sheet 3: Projected Data
+  const projectedSheet = results.projectedData.map((point, index) => ({
+    'Índice': index + 1,
+    'Tempo': point.time,
+    'Valor Projetado': point.value
+  }));
+  
+  const ws3 = XLSX.utils.json_to_sheet(projectedSheet);
+  XLSX.utils.book_append_sheet(wb, ws3, 'Projeção');
+
+  // Sheet 4: Summary
+  const summaryData = [
+    { 'Métrica': 'Equipamento', 'Valor': equipmentName || 'Não especificado' },
+    { 'Métrica': 'Data da Análise', 'Valor': new Date().toLocaleString('pt-BR') },
+    { 'Métrica': 'Modelo Recomendado', 'Valor': results.models[results.bestModel as keyof typeof results.models].name },
+    { 'Métrica': 'Limite de Falha', 'Valor': results.failureLimit },
+    { 'Métrica': 'Tempo Estimado de Falha', 'Valor': isFinite(results.estimatedFailureTime) ? results.estimatedFailureTime.toFixed(2) : 'N/A' },
+    { 'Métrica': 'Total de Medições', 'Valor': results.dataStats.totalMeasurements },
+    { 'Métrica': 'Período Analisado', 'Valor': results.dataStats.timeSpan.toFixed(2) },
+    { 'Métrica': 'Taxa de Degradação', 'Valor': results.dataStats.degradationRate.toFixed(4) },
+    { 'Métrica': 'Valor Atual', 'Valor': results.dataStats.currentValue.toFixed(2) }
+  ];
+  
+  const ws4 = XLSX.utils.json_to_sheet(summaryData);
+  XLSX.utils.book_append_sheet(wb, ws4, 'Resumo');
+
+  // Save Excel file
+  XLSX.writeFile(wb, `Relatorio_Degradacao_${equipmentName || 'Analise'}_${new Date().toISOString().split('T')[0]}.xlsx`);
+};
 // Generate CSV Report
 export const exportToCSV = (
   data: DataPoint[],

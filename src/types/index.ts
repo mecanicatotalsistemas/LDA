@@ -43,3 +43,40 @@ export interface AnalysisResults {
     meanTime: number;
   };
 }
+
+// Degradation Analysis Types
+export interface DegradationPoint {
+  time: number;
+  value: number;
+  status?: number; // 0 = active, 1 = failed
+}
+
+export interface DegradationModel {
+  name: string;
+  type: 'linear' | 'exponential' | 'logarithmic' | 'power';
+  parameters: { [key: string]: number };
+  rSquared: number;
+  predict: (t: number) => number;
+  timeToFailure: (limit: number) => number;
+}
+
+export interface DegradationResults {
+  models: {
+    linear: DegradationModel;
+    exponential: DegradationModel;
+    logarithmic: DegradationModel;
+    power: DegradationModel;
+  };
+  bestModel: string;
+  failureLimit: number;
+  estimatedFailureTime: number;
+  projectedData: { time: number; value: number }[];
+  lifeDistribution?: DistributionResult;
+  equipmentName: string;
+  dataStats: {
+    totalMeasurements: number;
+    timeSpan: number;
+    degradationRate: number;
+    currentValue: number;
+  };
+}
