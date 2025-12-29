@@ -97,7 +97,14 @@ const Charts: React.FC<ChartsProps> = ({
 
     const xScale = (x: number) => (x / xMax) * chartWidth;
     const yScale = useCustomYScale 
-      ? (y: number) => (1 - y) * chartHeight // Correct scale: 1 (100%) at top, 0 (0%) at bottom
+      ? (y: number) => {
+          if (chartId === 'reliability') {
+            return (1 - y) * chartHeight; // Reliability: 100% at top, 0% at bottom
+          } else if (chartId === 'failure') {
+            return y * chartHeight; // Failure: 0% at top, 100% at bottom (inverted for correct display)
+          }
+          return (1 - y) * chartHeight; // Default
+        }
       : (y: number) => chartHeight - ((y - yMin) / (yMax - yMin)) * chartHeight;
 
     const pathData = data
@@ -146,10 +153,25 @@ const Charts: React.FC<ChartsProps> = ({
     // Generate custom grid lines and labels
     const generateYGridLines = () => {
       if (useCustomYScale) {
-        // 10% increments for reliability/failure charts (100% to 0%)
+        if (chartId === 'reliability') {
+          // Reliability: 100% to 0% (decreasing)
+          return Array.from({ length: 11 }, (_, i) => {
+            const value = 1 - (i * 0.1); // Start from 1.0 (100%) and go down to 0.0 (0%)
+            const y = margin.top + (i * chartHeight) / 10; // Top to bottom positioning
+            return { y, value, label: `${(value * 100).toFixed(0)}%` };
+          });
+        } else if (chartId === 'failure') {
+          // Failure: 0% to 100% (increasing)
+          return Array.from({ length: 11 }, (_, i) => {
+            const value = i * 0.1; // Start from 0.0 (0%) and go up to 1.0 (100%)
+            const y = margin.top + chartHeight - (i * chartHeight) / 10; // Bottom to top positioning
+            return { y, value, label: `${(value * 100).toFixed(0)}%` };
+          });
+        }
+        // Default fallback
         return Array.from({ length: 11 }, (_, i) => {
-          const value = 1 - (i * 0.1); // Start from 1.0 (100%) and go down to 0.0 (0%)
-          const y = margin.top + (i * chartHeight) / 10; // Top to bottom positioning
+          const value = 1 - (i * 0.1);
+          const y = margin.top + (i * chartHeight) / 10;
           return { y, value, label: `${(value * 100).toFixed(0)}%` };
         });
       } else {
@@ -195,7 +217,14 @@ const Charts: React.FC<ChartsProps> = ({
     // Recalculate scales for fullscreen
     const finalXScale = (x: number) => (x / xMax) * finalChartWidth;
     const finalYScale = useCustomYScale 
-      ? (y: number) => (1 - y) * finalChartHeight // Correct scale for fullscreen
+      ? (y: number) => {
+          if (chartId === 'reliability') {
+            return (1 - y) * finalChartHeight; // Reliability: 100% at top, 0% at bottom
+          } else if (chartId === 'failure') {
+            return y * finalChartHeight; // Failure: 0% at top, 100% at bottom (inverted for correct display)
+          }
+          return (1 - y) * finalChartHeight; // Default
+        }
       : (y: number) => finalChartHeight - ((y - yMin) / (yMax - yMin)) * finalChartHeight;
 
     const finalPathData = data
@@ -423,8 +452,8 @@ const Charts: React.FC<ChartsProps> = ({
                       {xGridLines.map((gridLine, i) => (
                         <line key={`v-${i}`} x1={chartMargin.left + finalXScale(gridLine.value)} y1={chartMargin.top} x2={chartMargin.left + finalXScale(gridLine.value)} y2={chartMargin.top + finalChartHeight} />
                       ))}
-                      {yGridLines.map((gridLine, i) => (
-                        <line key={`h-${i}`} x1={chartMargin.left} y1={chartMargin.top + (i * finalChartHeight) / (yGridLines.length - 1)} x2={chartMargin.left + finalChartWidth} y2={chartMargin.top + (i * finalChartHeight) / (yGridLines.length - 1)} />
+                      {generateYGridLines().map((gridLine, i) => (
+                        <line key={`h-${i}`} x1={chartMargin.left} y1={gridLine.y} x2={chartMargin.left + finalChartWidth} y2={gridLine.y} />
                       ))}
                     </g>
                     
@@ -434,7 +463,7 @@ const Charts: React.FC<ChartsProps> = ({
                           {gridLine.label}
                         </text>
                       ))}
-                      {yGridLines.map((gridLine, i) => (
+                      {generateYGridLines().map((gridLine, i) => (
                         <text key={`y-label-${i}`} x={chartMargin.left - 15} y={gridLine.y + 5} textAnchor="end">
                           {gridLine.label}
                         </text>
