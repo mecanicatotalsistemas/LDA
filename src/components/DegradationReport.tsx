@@ -156,8 +156,8 @@ const DegradationReport: React.FC<DegradationReportProps> = ({
               <div>
                 <h3 className="font-medium text-orange-900 mb-2">Tempo Estimado de Falha</h3>
                 <p className="text-orange-800 font-mono">
-                  {isFinite(results.estimatedFailureTime) 
-                    ? `${results.estimatedFailureTime.toFixed(2)} unidades`
+                  {isFinite(currentModel.timeToFailure(results.failureLimit)) 
+                    ? `${currentModel.timeToFailure(results.failureLimit).toFixed(2)} unidades`
                     : 'Não determinado'
                   }
                 </p>
@@ -226,8 +226,8 @@ const DegradationReport: React.FC<DegradationReportProps> = ({
                 <div className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
                   <span className="font-medium text-gray-700">Tempo até Falha:</span>
                   <span className="font-mono text-gray-900">
-                    {isFinite(results.estimatedFailureTime) 
-                      ? results.estimatedFailureTime.toFixed(2)
+                    {isFinite(currentModel.timeToFailure(results.failureLimit)) 
+                      ? currentModel.timeToFailure(results.failureLimit).toFixed(2)
                       : 'N/A'
                     }
                   </span>
@@ -363,11 +363,11 @@ const DegradationReport: React.FC<DegradationReportProps> = ({
                 por apresentar o melhor ajuste aos dados (R² = {(currentModel.rSquared * 100).toFixed(1)}%).
               </p>
               
-              {isFinite(results.estimatedFailureTime) ? (
+              {isFinite(currentModel.timeToFailure(results.failureLimit)) ? (
                 <p>
                   <strong>Previsão de Falha:</strong> Com base no modelo ajustado e no limite crítico 
                   de {results.failureLimit}, estima-se que a falha ocorrerá em aproximadamente {' '}
-                  {results.estimatedFailureTime.toFixed(1)} unidades de tempo.
+                  {currentModel.timeToFailure(results.failureLimit).toFixed(1)} unidades de tempo.
                 </p>
               ) : (
                 <p>

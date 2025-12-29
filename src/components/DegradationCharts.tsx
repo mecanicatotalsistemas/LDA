@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, FileText, TrendingDown, Target, Activity, Zap } from 'lucide-react';
+import { ArrowLeft, FileText, TrendingDown, Target, Activity, Zap, CheckCircle } from 'lucide-react';
 import { DegradationResults, DegradationPoint } from '../types';
 
 interface DegradationChartsProps {
@@ -19,6 +19,24 @@ const DegradationCharts: React.FC<DegradationChartsProps> = ({
 
   const currentModel = results.models[selectedModel as keyof typeof results.models];
 
+  // Generate model-specific projected data
+  const generateModelProjection = (modelKey: string) => {
+    const model = results.models[modelKey as keyof typeof results.models];
+    const allTimes = [...data.map(d => d.time), ...results.projectedData.map(d => d.time)];
+    const maxTime = Math.max(...allTimes);
+    const projectionTime = Math.min(model.timeToFailure(results.failureLimit) * 1.2, maxTime * 3);
+    
+    return Array.from({ length: 50 }, (_, i) => {
+      const t = (i + 1) * projectionTime / 50;
+      return {
+        time: t,
+        value: model.predict(t)
+      };
+    });
+  };
+
+  const currentProjection = generateModelProjection(selectedModel);
+
   // Chart dimensions
   const width = 700;
   const height = 400;
@@ -28,8 +46,8 @@ const DegradationCharts: React.FC<DegradationChartsProps> = ({
 
   // Degradation Chart
   const DegradationChart = () => {
-    const allTimes = [...data.map(d => d.time), ...results.projectedData.map(d => d.time)];
-    const allValues = [...data.map(d => d.value), ...results.projectedData.map(d => d.value)];
+    const allTimes = [...data.map(d => d.time), ...currentProjection.map(d => d.time)];
+    const allValues = [...data.map(d => d.value), ...currentProjection.map(d => d.value)];
     
     const maxTime = Math.max(...allTimes);
     const maxValue = Math.max(...allValues, results.failureLimit * 1.1);
@@ -62,13 +80,19 @@ const DegradationCharts: React.FC<DegradationChartsProps> = ({
         
         <div className="flex justify-center">
           <svg width={width} height={height}>
-            {/* Background */}
+            <defs>
+              <linearGradient id="degradation-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.1" />
+                <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.05" />
+              </linearGradient>
+            </defs>
+
             <rect 
               x={margin.left} 
               y={margin.top} 
               width={chartWidth} 
               height={chartHeight} 
-              fill="#f8fafc"
+              fill="url(#degradation-gradient)"
               rx="8"
             />
 
@@ -136,18 +160,19 @@ const DegradationCharts: React.FC<DegradationChartsProps> = ({
 
             {/* Projected curve */}
             <path
-              d={results.projectedData
+              d={currentProjection
                 .map((point, i) => `${i === 0 ? 'M' : 'L'} ${margin.left + xScale(point.time)} ${margin.top + yScale(point.value)}`)
                 .join(' ')}
               fill="none"
               stroke="#f59e0b"
-              strokeWidth="3"
+              strokeWidth="4"
+              strokeDasharray={selectedModel === results.bestModel ? "none" : "8,4"}
             />
 
             {/* Estimated failure point */}
-            {isFinite(results.estimatedFailureTime) && (
+            {isFinite(currentModel.timeToFailure(results.failureLimit)) && (
               <circle
-                cx={margin.left + xScale(results.estimatedFailureTime)}
+                cx={margin.left + xScale(currentModel.timeToFailure(results.failureLimit))}
                 cy={margin.top + yScale(results.failureLimit)}
                 r="6"
                 fill="#dc2626"
@@ -184,7 +209,7 @@ const DegradationCharts: React.FC<DegradationChartsProps> = ({
             <span>Dados Históricos</span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="w-4 h-1 bg-yellow-500"></div>
+            <div className={`w-4 h-1 bg-yellow-500 ${selectedModel !== results.bestModel ? 'border-dashed border-t-2' : ''}`}></div>
             <span>Projeção ({currentModel.name})</span>
           </div>
           <div className="flex items-center space-x-2">
@@ -300,7 +325,10 @@ const DegradationCharts: React.FC<DegradationChartsProps> = ({
 
       {/* Model Selection */}
       <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-xl p-6">
-        <h3 className="text-lg font-bold text-orange-900 mb-4">Seleção do Modelo de Degradação</h3>
+        <div className="flex items-center space-x-3 mb-4">
+          <TrendingDown className="w-6 h-6 text-orange-600" />
+          <h3 className="text-lg font-bold text-orange-900">Seleção do Modelo de Degradação</h3>
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {Object.entries(results.models).map(([key, model]) => {
@@ -311,31 +339,44 @@ const DegradationCharts: React.FC<DegradationChartsProps> = ({
               <button
                 key={key}
                 onClick={() => setSelectedModel(key)}
-                className={`p-4 rounded-lg border-2 text-left transition-all ${
+                className={`p-4 rounded-lg border-2 text-left transition-all duration-300 transform hover:scale-105 ${
                   isSelected
-                    ? 'border-orange-500 bg-orange-50'
-                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                    ? 'border-black bg-orange-100 shadow-lg'
+                    : 'border-gray-200 hover:border-orange-300 bg-white hover:shadow-md'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium text-gray-900">{model.name}</h4>
+                  <h4 className={`font-medium ${isSelected ? 'text-orange-900' : 'text-gray-900'}`}>
+                    {model.name}
+                  </h4>
                   {isRecommended && (
-                    <div className="w-2 h-2 bg-green-400 rounded-full" title="Melhor Ajuste"></div>
+                    <CheckCircle className="w-5 h-5 text-green-500" title="Melhor Ajuste (Maior R²)" />
                   )}
                 </div>
-                <div className="text-sm text-gray-600">
-                  R² = {(model.rSquared * 100).toFixed(1)}%
+                <div className={`text-sm ${isSelected ? 'text-orange-700' : 'text-gray-600'}`}>
+                  <div className="font-semibold">R² = {(model.rSquared * 100).toFixed(1)}%</div>
+                  <div className="text-xs mt-1">
+                    {isFinite(model.timeToFailure(results.failureLimit)) 
+                      ? `T_falha: ${model.timeToFailure(results.failureLimit).toFixed(1)}`
+                      : 'T_falha: N/A'
+                    }
+                  </div>
                 </div>
+                {isRecommended && (
+                  <div className="mt-2 text-xs text-green-600 font-medium">
+                    ✓ Sugerido
+                  </div>
+                )}
               </button>
             );
           })}
         </div>
 
         <div className="mt-4 p-4 bg-white rounded-lg border border-orange-200">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <span className="text-sm text-gray-600">Modelo Selecionado:</span>
-              <div className="font-bold text-gray-900">{currentModel.name}</div>
+              <div className="font-bold text-orange-900">{currentModel.name}</div>
             </div>
             <div>
               <span className="text-sm text-gray-600">Qualidade do Ajuste:</span>
@@ -344,11 +385,28 @@ const DegradationCharts: React.FC<DegradationChartsProps> = ({
             <div>
               <span className="text-sm text-gray-600">Tempo Estimado de Falha:</span>
               <div className="font-bold text-red-600">
-                {isFinite(results.estimatedFailureTime) 
-                  ? `${results.estimatedFailureTime.toFixed(1)} unidades`
+                {isFinite(currentModel.timeToFailure(results.failureLimit)) 
+                  ? `${currentModel.timeToFailure(results.failureLimit).toFixed(1)} unidades`
                   : 'Não determinado'
                 }
               </div>
+            </div>
+            <div>
+              <span className="text-sm text-gray-600">Status:</span>
+              <div className={`font-bold ${selectedModel === results.bestModel ? 'text-green-600' : 'text-blue-600'}`}>
+                {selectedModel === results.bestModel ? '✓ Recomendado' : 'Alternativo'}
+              </div>
+            </div>
+          </div>
+          
+          {/* Model equation display */}
+          <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+            <span className="text-sm text-gray-600">Equação do Modelo:</span>
+            <div className="font-mono text-sm text-gray-900 mt-1">
+              {selectedModel === 'linear' && `y = ${currentModel.parameters.a.toFixed(3)} + ${currentModel.parameters.b.toFixed(3)} × t`}
+              {selectedModel === 'exponential' && `y = ${currentModel.parameters.a.toFixed(3)} × e^(${currentModel.parameters.b.toFixed(3)} × t)`}
+              {selectedModel === 'logarithmic' && `y = ${currentModel.parameters.a.toFixed(3)} + ${currentModel.parameters.b.toFixed(3)} × ln(t)`}
+              {selectedModel === 'power' && `y = ${currentModel.parameters.a.toFixed(3)} × t^${currentModel.parameters.b.toFixed(3)}`}
             </div>
           </div>
         </div>
@@ -389,8 +447,11 @@ const DegradationCharts: React.FC<DegradationChartsProps> = ({
 
       {/* Model Parameters */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-6">
-        <h4 className="text-lg font-bold text-gray-900 mb-4">
+        <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center space-x-2">
+          <Activity className="w-5 h-5 text-blue-600" />
+          <span>
           Parâmetros do Modelo {currentModel.name}
+          </span>
         </h4>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -411,18 +472,47 @@ const DegradationCharts: React.FC<DegradationChartsProps> = ({
             <div className="space-y-2">
               <div className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
                 <span className="font-medium text-gray-700">R² (Coef. Determinação):</span>
-                <span className="font-mono text-gray-900">{(currentModel.rSquared * 100).toFixed(2)}%</span>
+                <span className={`font-mono font-bold ${currentModel.rSquared > 0.8 ? 'text-green-600' : currentModel.rSquared > 0.6 ? 'text-yellow-600' : 'text-red-600'}`}>
+                  {(currentModel.rSquared * 100).toFixed(2)}%
+                </span>
               </div>
               <div className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
                 <span className="font-medium text-gray-700">Tempo até Falha:</span>
                 <span className="font-mono text-gray-900">
-                  {isFinite(results.estimatedFailureTime) 
-                    ? results.estimatedFailureTime.toFixed(2)
+                  {isFinite(currentModel.timeToFailure(results.failureLimit)) 
+                    ? currentModel.timeToFailure(results.failureLimit).toFixed(2)
                     : 'N/A'
                   }
                 </span>
               </div>
+              <div className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
+                <span className="font-medium text-gray-700">Tipo de Modelo:</span>
+                <span className="font-mono text-gray-900 capitalize">{currentModel.type}</span>
+              </div>
             </div>
+          </div>
+        </div>
+        
+        {/* Model comparison indicator */}
+        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center space-x-2">
+            <Activity className="w-4 h-4 text-blue-600" />
+            <span className="text-sm font-medium text-blue-900">Qualidade do Ajuste:</span>
+          </div>
+          <div className="mt-2 flex items-center space-x-4">
+            <div className="flex-1 bg-gray-200 rounded-full h-2">
+              <div 
+                className={`h-2 rounded-full transition-all duration-500 ${
+                  currentModel.rSquared > 0.8 ? 'bg-green-500' : 
+                  currentModel.rSquared > 0.6 ? 'bg-yellow-500' : 'bg-red-500'
+                }`}
+                style={{ width: `${Math.max(currentModel.rSquared * 100, 5)}%` }}
+              ></div>
+            </div>
+            <span className="text-sm text-blue-700 font-medium">
+              {currentModel.rSquared > 0.8 ? 'Excelente' : 
+               currentModel.rSquared > 0.6 ? 'Bom' : 'Regular'}
+            </span>
           </div>
         </div>
       </div>
