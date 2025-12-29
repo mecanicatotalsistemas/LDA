@@ -101,7 +101,7 @@ const Charts: React.FC<ChartsProps> = ({
           if (chartId === 'reliability') {
             return (1 - y) * chartHeight; // Reliability: 100% at top, 0% at bottom
           } else if (chartId === 'failure') {
-            return y * chartHeight; // Failure: 0% at top, 100% at bottom (inverted for correct display)
+            return (1 - y) * chartHeight; // Failure: 0% at bottom, 100% at top
           }
           return (1 - y) * chartHeight; // Default
         }
@@ -161,10 +161,10 @@ const Charts: React.FC<ChartsProps> = ({
             return { y, value, label: `${(value * 100).toFixed(0)}%` };
           });
         } else if (chartId === 'failure') {
-          // Failure: 0% to 100% (increasing)
+          // Failure: 0% to 100% (increasing) - FIXED
           return Array.from({ length: 11 }, (_, i) => {
             const value = i * 0.1; // Start from 0.0 (0%) and go up to 1.0 (100%)
-            const y = margin.top + chartHeight - (i * chartHeight) / 10; // Bottom to top positioning
+            const y = margin.top + chartHeight - (i * chartHeight) / 10; // 0% at bottom, 100% at top
             return { y, value, label: `${(value * 100).toFixed(0)}%` };
           });
         }
@@ -221,7 +221,7 @@ const Charts: React.FC<ChartsProps> = ({
           if (chartId === 'reliability') {
             return (1 - y) * finalChartHeight; // Reliability: 100% at top, 0% at bottom
           } else if (chartId === 'failure') {
-            return y * finalChartHeight; // Failure: 0% at top, 100% at bottom (inverted for correct display)
+            return (1 - y) * finalChartHeight; // Failure: 0% at bottom, 100% at top
           }
           return (1 - y) * finalChartHeight; // Default
         }
@@ -463,11 +463,40 @@ const Charts: React.FC<ChartsProps> = ({
                           {gridLine.label}
                         </text>
                       ))}
-                      {generateYGridLines().map((gridLine, i) => (
-                        <text key={`y-label-${i}`} x={chartMargin.left - 15} y={gridLine.y + 5} textAnchor="end">
-                          {gridLine.label}
-                        </text>
-                      ))}
+                      {/* Y-axis labels for fullscreen */}
+                      {(() => {
+                        if (useCustomYScale) {
+                          if (chartId === 'failure') {
+                            // Failure: 0% to 100% (increasing) - FIXED for fullscreen
+                            return Array.from({ length: 11 }, (_, i) => {
+                              const value = i * 0.1; // 0% to 100%
+                              const y = chartMargin.top + finalChartHeight - (i * finalChartHeight) / 10;
+                              return (
+                                <text key={`y-label-${i}`} x={chartMargin.left - 15} y={y + 5} textAnchor="end">
+                                  {(value * 100).toFixed(0)}%
+                                </text>
+                              );
+                            });
+                          } else if (chartId === 'reliability') {
+                            // Reliability: 100% to 0% (decreasing)
+                            return Array.from({ length: 11 }, (_, i) => {
+                              const value = 1 - (i * 0.1); // 100% to 0%
+                              const y = chartMargin.top + (i * finalChartHeight) / 10;
+                              return (
+                                <text key={`y-label-${i}`} x={chartMargin.left - 15} y={y + 5} textAnchor="end">
+                                  {(value * 100).toFixed(0)}%
+                                </text>
+                              );
+                            });
+                          }
+                        }
+                        // Default labels
+                        return generateYGridLines().map((gridLine, i) => (
+                          <text key={`y-label-${i}`} x={chartMargin.left - 15} y={gridLine.y + 5} textAnchor="end">
+                            {gridLine.label}
+                          </text>
+                        ));
+                      })()}
                     </g>
                     
                     <g stroke="#374151" strokeWidth="2">
