@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, Calculator, BarChart3, FileText, Database, TrendingUp, RefreshCw, MessageCircle, TrendingDown, AlertTriangle, Activity, Users } from 'lucide-react';
+import { Upload, Calculator, BarChart3, FileText, Database, TrendingUp, RefreshCw, MessageCircle, TrendingDown, AlertTriangle, Activity, Users, LogOut, User as UserIcon } from 'lucide-react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import DataInput from './components/DataInput';
@@ -12,9 +12,14 @@ import DegradationAnalysis from './components/DegradationAnalysis';
 import FailureProbabilityChart from './components/FailureProbabilityChart';
 import DegradationCurveChart from './components/DegradationCurveChart';
 import UserManagement from './components/UserManagement';
+import Login from './components/Login';
+import Register from './components/Register';
+import { useAuth } from './contexts/AuthContext';
 import { DataPoint, DistributionResult, AnalysisResults } from './types';
 
 function App() {
+  const { user, profile, loading: authLoading, signOut } = useAuth();
+  const [showRegister, setShowRegister] = useState(false);
   const [activeTab, setActiveTab] = useState('data');
   const [data, setData] = useState<DataPoint[]>([]);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
@@ -52,11 +57,54 @@ function App() {
     { id: 'chat', label: 'LDAChat', icon: MessageCircle },
   ];
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600 mb-4"></div>
+          <p className="text-lg text-gray-700">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    if (showRegister) {
+      return <Register onSwitchToLogin={() => setShowRegister(false)} />;
+    }
+    return <Login onSwitchToRegister={() => setShowRegister(true)} />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Header />
-      
+
       <main className="container mx-auto px-4 py-8">
+        <div className="bg-white rounded-lg shadow-lg mb-6 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                {profile?.full_name?.charAt(0).toUpperCase() || 'U'}
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900">{profile?.full_name || 'Usuário'}</h3>
+                <p className="text-sm text-gray-500">{profile?.email || user.email}</p>
+              </div>
+              {profile?.role === 'admin' && (
+                <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-semibold">
+                  Administrador
+                </span>
+              )}
+            </div>
+            <button
+              onClick={signOut}
+              className="flex items-center space-x-2 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sair</span>
+            </button>
+          </div>
+        </div>
         {/* Equipment Name and New Analysis Section */}
         <div className="bg-white rounded-lg shadow-lg mb-6 p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
