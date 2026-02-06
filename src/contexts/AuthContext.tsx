@@ -97,20 +97,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) return { error };
 
       if (data.user) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('is_active')
-          .eq('id', data.user.id)
-          .maybeSingle();
+        const { data: isActiveData, error: checkError } = await supabase
+          .rpc('check_user_active', { user_id: data.user.id });
 
-        if (profileData && !profileData.is_active) {
+        if (checkError) {
+          console.error('Error checking user status:', checkError);
           await supabase.auth.signOut();
-          return { error: { message: 'Usuário bloqueado. Contate o administrador.' } as AuthError };
+          return { error: { message: 'Erro ao verificar status do usuário' } as AuthError };
+        }
+
+        if (isActiveData === false) {
+          await supabase.auth.signOut();
+          return {
+            error: {
+              name: 'UserInactiveError',
+              message: 'Sua conta está inativa. Entre em contato com o administrador.',
+              status: 403
+            } as AuthError
+          };
         }
       }
 
       return { error: null };
     } catch (error) {
+      console.error('Sign in error:', error);
       return { error: error as AuthError };
     }
   };
