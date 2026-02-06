@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, Calculator, BarChart3, FileText, Database, TrendingUp, RefreshCw, MessageCircle, TrendingDown, AlertTriangle, Activity } from 'lucide-react';
+import { Upload, Calculator, BarChart3, FileText, Database, TrendingUp, RefreshCw, MessageCircle, TrendingDown, AlertTriangle, Activity, Users } from 'lucide-react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import DataInput from './components/DataInput';
@@ -11,6 +11,7 @@ import LDAChat from './components/LDAChat';
 import DegradationAnalysis from './components/DegradationAnalysis';
 import FailureProbabilityChart from './components/FailureProbabilityChart';
 import DegradationCurveChart from './components/DegradationCurveChart';
+import UserManagement from './components/UserManagement';
 import { DataPoint, DistributionResult, AnalysisResults } from './types';
 
 function App() {
@@ -47,6 +48,7 @@ function App() {
     { id: 'degradation', label: 'Degradação (DA)', icon: TrendingDown },
     { id: 'failure-curve', label: 'Curva de Falha', icon: AlertTriangle },
     { id: 'degradation-curve', label: 'Curva de Degradação', icon: Activity },
+    { id: 'users', label: 'Usuários', icon: Users },
     { id: 'chat', label: 'LDAChat', icon: MessageCircle },
   ];
 
@@ -170,6 +172,10 @@ function App() {
 
             {activeTab === 'degradation-curve' && (
               <DegradationCurveChart />
+            )}
+
+            {activeTab === 'users' && (
+              <UserManagement />
             )}
 
             {activeTab === 'chat' && (
