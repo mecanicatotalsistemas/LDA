@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, FileText, TrendingDown, Target, Activity, Zap, CheckCircle } from 'lucide-react';
+import { ArrowLeft, FileText, TrendingDown, Activity, CheckCircle } from 'lucide-react';
 import { DegradationResults, DegradationPoint } from '../types';
 
 interface DegradationChartsProps {
@@ -37,9 +37,9 @@ const DegradationCharts: React.FC<DegradationChartsProps> = ({
 
   const currentProjection = generateModelProjection(selectedModel);
 
-  // Chart dimensions
-  const width = 700;
-  const height = 400;
+  // Chart dimensions - responsivo com viewBox
+  const width = 900;
+  const height = 500;
   const margin = { top: 30, right: 30, bottom: 60, left: 80 };
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
@@ -77,9 +77,9 @@ const DegradationCharts: React.FC<DegradationChartsProps> = ({
             <h4 className="text-xl font-bold text-gray-900">Evolução da Degradação</h4>
           </div>
         </div>
-        
-        <div className="flex justify-center">
-          <svg width={width} height={height}>
+
+        <div className="w-full">
+          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet">
             <defs>
               <linearGradient id="degradation-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.1" />
@@ -225,83 +225,6 @@ const DegradationCharts: React.FC<DegradationChartsProps> = ({
     );
   };
 
-  // Reliability Chart (if life distribution is available)
-  const ReliabilityChart = () => {
-    if (!results.lifeDistribution) {
-      return (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-6">
-          <div className="text-center py-8">
-            <Target className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-            <p className="text-gray-600">Distribuição de vida não disponível</p>
-          </div>
-        </div>
-      );
-    }
-
-    const dist = results.lifeDistribution;
-    const maxTime = results.estimatedFailureTime * 2;
-    const timePoints = Array.from({ length: 100 }, (_, i) => (i + 1) * maxTime / 100);
-    const reliabilityData = timePoints.map(t => ({ x: t, y: dist.reliability(t) }));
-
-    const xScale = (x: number) => (x / maxTime) * chartWidth;
-    const yScale = (y: number) => chartHeight - (y * chartHeight);
-
-    return (
-      <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-6">
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="bg-blue-100 p-2 rounded-lg">
-            <Target className="w-6 h-6 text-blue-600" />
-          </div>
-          <h4 className="text-xl font-bold text-gray-900">Confiabilidade R(t)</h4>
-        </div>
-        
-        <div className="flex justify-center">
-          <svg width={width} height={height}>
-            <rect 
-              x={margin.left} 
-              y={margin.top} 
-              width={chartWidth} 
-              height={chartHeight} 
-              fill="#f8fafc"
-              rx="8"
-            />
-
-            {/* Grid and axes similar to degradation chart */}
-            <g stroke="#e5e7eb" strokeWidth="1" opacity="0.5">
-              {Array.from({ length: 6 }, (_, i) => (
-                <line key={i} x1={margin.left + (i * chartWidth) / 5} y1={margin.top} x2={margin.left + (i * chartWidth) / 5} y2={margin.top + chartHeight} />
-              ))}
-              {Array.from({ length: 6 }, (_, i) => (
-                <line key={i} x1={margin.left} y1={margin.top + (i * chartHeight) / 5} x2={margin.left + chartWidth} y2={margin.top + (i * chartHeight) / 5} />
-              ))}
-            </g>
-            
-            <g stroke="#374151" strokeWidth="2">
-              <line x1={margin.left} y1={margin.top + chartHeight} x2={margin.left + chartWidth} y2={margin.top + chartHeight} />
-              <line x1={margin.left} y1={margin.top} x2={margin.left} y2={margin.top + chartHeight} />
-            </g>
-
-            <path
-              d={reliabilityData
-                .map((point, i) => `${i === 0 ? 'M' : 'L'} ${margin.left + xScale(point.x)} ${margin.top + yScale(point.y)}`)
-                .join(' ')}
-              fill="none"
-              stroke="#3b82f6"
-              strokeWidth="3"
-            />
-
-            <text x={margin.left + chartWidth / 2} y={height - 20} textAnchor="middle" className="text-sm font-medium fill-gray-700">
-              Tempo
-            </text>
-            <text x={25} y={margin.top + chartHeight / 2} textAnchor="middle" transform={`rotate(-90, 25, ${margin.top + chartHeight / 2})`} className="text-sm font-medium fill-gray-700">
-              Confiabilidade
-            </text>
-          </svg>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -413,9 +336,8 @@ const DegradationCharts: React.FC<DegradationChartsProps> = ({
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+      <div className="w-full">
         <DegradationChart />
-        <ReliabilityChart />
       </div>
 
       {/* Summary Statistics */}
