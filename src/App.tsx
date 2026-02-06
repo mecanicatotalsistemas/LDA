@@ -27,6 +27,12 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [equipmentName, setEquipmentName] = useState<string>('');
 
+  React.useEffect(() => {
+    if (user && profile && !profile.is_active) {
+      signOut();
+    }
+  }, [profile, user, signOut]);
+
   const handleDataChange = useCallback((newData: DataPoint[]) => {
     setData(newData);
     setAnalysisResults(null);
