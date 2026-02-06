@@ -236,7 +236,7 @@ function App() {
         </div>
       </main>
 
-      <Footer />
+      <Footer onNavigateToUsers={() => setActiveTab('users')} />
     </div>
   );
 }
