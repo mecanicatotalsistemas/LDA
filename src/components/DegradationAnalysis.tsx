@@ -1,21 +1,37 @@
 import React, { useState, useCallback } from 'react';
-import { TrendingDown, Plus, Trash2, Play, Download, Upload, Target, Activity } from 'lucide-react';
+import { TrendingDown, Plus, Trash2, Play, Download, Upload, Target, Activity, Save, FolderOpen } from 'lucide-react';
 import { DegradationPoint, DegradationResults } from '../types';
 import { performDegradationAnalysis } from '../utils/degradationCalculations';
 import DegradationCharts from './DegradationCharts';
 import DegradationReport from './DegradationReport';
+import SaveAnalysisModal from './SaveAnalysisModal';
+import SavedAnalyses from './SavedAnalyses';
+import { Analysis } from '../utils/analysisStorage';
 
 interface DegradationAnalysisProps {
   equipmentName: string;
+  data: DegradationPoint[];
+  onDataChange: (data: DegradationPoint[]) => void;
+  failureLimit: string;
+  onFailureLimitChange: (limit: string) => void;
+  results: DegradationResults | null;
+  onResultsChange: (results: DegradationResults | null) => void;
 }
 
-const DegradationAnalysis: React.FC<DegradationAnalysisProps> = ({ equipmentName }) => {
-  const [data, setData] = useState<DegradationPoint[]>([]);
-  const [failureLimit, setFailureLimit] = useState<string>('');
+const DegradationAnalysis: React.FC<DegradationAnalysisProps> = ({
+  equipmentName,
+  data,
+  onDataChange,
+  failureLimit,
+  onFailureLimitChange,
+  results,
+  onResultsChange,
+}) => {
   const [newEntry, setNewEntry] = useState({ time: '', value: '', status: '0' });
-  const [results, setResults] = useState<DegradationResults | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeView, setActiveView] = useState<'input' | 'charts' | 'report'>('input');
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showLoadModal, setShowLoadModal] = useState(false);
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -48,10 +64,10 @@ const DegradationAnalysis: React.FC<DegradationAnalysisProps> = ({ equipmentName
         }
       }
 
-      setData(parsedData.sort((a, b) => a.time - b.time));
+      onDataChange(parsedData.sort((a, b) => a.time - b.time));
     };
     reader.readAsText(file);
-  }, []);
+  }, [onDataChange]);
 
   const addEntry = useCallback(() => {
     const time = parseFloat(newEntry.time);
@@ -70,14 +86,14 @@ const DegradationAnalysis: React.FC<DegradationAnalysisProps> = ({ equipmentName
 
     const entry: DegradationPoint = { time, value, status };
     const newData = [...data, entry].sort((a, b) => a.time - b.time);
-    setData(newData);
+    onDataChange(newData);
     setNewEntry({ time: '', value: '', status: '0' });
-  }, [data, newEntry]);
+  }, [data, newEntry, onDataChange]);
 
   const removeEntry = useCallback((index: number) => {
     const newData = data.filter((_, i) => i !== index);
-    setData(newData);
-  }, [data]);
+    onDataChange(newData);
+  }, [data, onDataChange]);
 
   const runAnalysis = useCallback(async () => {
     if (data.length < 3) {
@@ -94,7 +110,7 @@ const DegradationAnalysis: React.FC<DegradationAnalysisProps> = ({ equipmentName
     setIsLoading(true);
     try {
       const analysisResults = await performDegradationAnalysis(data, limit, equipmentName);
-      setResults(analysisResults);
+      onResultsChange(analysisResults);
       setActiveView('charts');
     } catch (error) {
       console.error('Erro na análise:', error);
@@ -102,7 +118,7 @@ const DegradationAnalysis: React.FC<DegradationAnalysisProps> = ({ equipmentName
     } finally {
       setIsLoading(false);
     }
-  }, [data, failureLimit, equipmentName]);
+  }, [data, failureLimit, equipmentName, onResultsChange]);
 
   const downloadTemplate = useCallback(() => {
     const csvContent = 'time,value,status\n0,1.0,0\n100,1.2,0\n200,1.5,0\n300,1.8,0\n400,2.1,0';
@@ -114,6 +130,21 @@ const DegradationAnalysis: React.FC<DegradationAnalysisProps> = ({ equipmentName
     a.click();
     window.URL.revokeObjectURL(url);
   }, []);
+
+  const handleSaveAnalysis = useCallback(() => {
+    if (!results) {
+      alert('Execute a análise antes de salvar');
+      return;
+    }
+    setShowSaveModal(true);
+  }, [results]);
+
+  const handleLoadAnalysis = useCallback((analysis: Analysis) => {
+    onDataChange(analysis.input_data.data || []);
+    onFailureLimitChange(analysis.input_data.failureLimit || '');
+    onResultsChange(analysis.results_data.results || null);
+    setShowLoadModal(false);
+  }, [onDataChange, onFailureLimitChange, onResultsChange]);
 
   if (activeView === 'charts' && results) {
     return (
@@ -136,24 +167,57 @@ const DegradationAnalysis: React.FC<DegradationAnalysisProps> = ({ equipmentName
     );
   }
 
+  if (showLoadModal) {
+    return (
+      <SavedAnalyses
+        analysisType="degradation"
+        onLoadAnalysis={handleLoadAnalysis}
+        onClose={() => setShowLoadModal(false)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-xl p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="bg-orange-100 p-2 rounded-lg">
-            <TrendingDown className="w-6 h-6 text-orange-600" />
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <div className="bg-orange-100 p-2 rounded-lg">
+              <TrendingDown className="w-6 h-6 text-orange-600" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-orange-900">
+                🧬 Análise de Degradação (DA)
+              </h2>
+              <p className="text-orange-700">
+                Análise preditiva baseada em medições de degradação ao longo do tempo
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-orange-900">
-              🧬 Análise de Degradação (DA)
-            </h2>
-            <p className="text-orange-700">
-              Análise preditiva baseada em medições de degradação ao longo do tempo
-            </p>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowLoadModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              title="Carregar análise salva"
+            >
+              <FolderOpen size={18} />
+              Carregar
+            </button>
+            {results && (
+              <button
+                onClick={handleSaveAnalysis}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                title="Salvar análise atual"
+              >
+                <Save size={18} />
+                Salvar
+              </button>
+            )}
           </div>
         </div>
-        
+
         {equipmentName && (
           <div className="bg-white rounded-lg p-3 border border-orange-200">
             <p className="text-sm text-orange-800">
@@ -162,6 +226,19 @@ const DegradationAnalysis: React.FC<DegradationAnalysisProps> = ({ equipmentName
           </div>
         )}
       </div>
+
+      {showSaveModal && results && (
+        <SaveAnalysisModal
+          analysisType="degradation"
+          inputData={{ data, failureLimit, equipmentName }}
+          resultsData={{ results }}
+          onClose={() => setShowSaveModal(false)}
+          onSaved={() => {
+            setShowSaveModal(false);
+            alert('Análise salva com sucesso!');
+          }}
+        />
+      )}
 
       {/* File Upload Section */}
       <div className="bg-gray-50 rounded-lg p-6">
@@ -260,7 +337,7 @@ const DegradationAnalysis: React.FC<DegradationAnalysisProps> = ({ equipmentName
               type="number"
               step="any"
               value={failureLimit}
-              onChange={(e) => setFailureLimit(e.target.value)}
+              onChange={(e) => onFailureLimitChange(e.target.value)}
               className="w-full px-4 py-2 border border-red-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
               placeholder="Ex: 5.0 (valor que define falha)"
             />

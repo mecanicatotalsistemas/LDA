@@ -15,7 +15,7 @@ import UserManagement from './components/UserManagement';
 import Login from './components/Login';
 import Register from './components/Register';
 import { useAuth } from './contexts/AuthContext';
-import { DataPoint, DistributionResult, AnalysisResults } from './types';
+import { DataPoint, DistributionResult, AnalysisResults, DegradationPoint, DegradationResults } from './types';
 
 function App() {
   const { user, profile, loading: authLoading, signOut } = useAuth();
@@ -26,6 +26,10 @@ function App() {
   const [selectedDistribution, setSelectedDistribution] = useState<string>('weibull2');
   const [isLoading, setIsLoading] = useState(false);
   const [equipmentName, setEquipmentName] = useState<string>('');
+
+  const [degradationData, setDegradationData] = useState<DegradationPoint[]>([]);
+  const [degradationFailureLimit, setDegradationFailureLimit] = useState<string>('');
+  const [degradationResults, setDegradationResults] = useState<DegradationResults | null>(null);
 
   React.useEffect(() => {
     if (user && profile && !profile.is_active) {
@@ -48,6 +52,9 @@ function App() {
     setAnalysisResults(null);
     setEquipmentName('');
     setSelectedDistribution('weibull2');
+    setDegradationData([]);
+    setDegradationFailureLimit('');
+    setDegradationResults(null);
     setActiveTab('data');
   }, []);
   const isAdmin = profile?.role === 'admin';
@@ -219,6 +226,12 @@ function App() {
             {activeTab === 'degradation' && (
               <DegradationAnalysis
                 equipmentName={equipmentName}
+                data={degradationData}
+                onDataChange={setDegradationData}
+                failureLimit={degradationFailureLimit}
+                onFailureLimitChange={setDegradationFailureLimit}
+                results={degradationResults}
+                onResultsChange={setDegradationResults}
               />
             )}
 
