@@ -44,6 +44,8 @@ function App() {
     setSelectedDistribution('weibull2');
     setActiveTab('data');
   }, []);
+  const isAdmin = profile?.role === 'admin';
+
   const tabs = [
     { id: 'data', label: 'Dados', icon: Database },
     { id: 'distribution', label: 'Distribuição', icon: TrendingUp },
@@ -53,7 +55,7 @@ function App() {
     { id: 'degradation', label: 'Degradação (DA)', icon: TrendingDown },
     { id: 'failure-curve', label: 'Curva de Falha', icon: AlertTriangle },
     { id: 'degradation-curve', label: 'Curva de Degradação', icon: Activity },
-    { id: 'users', label: 'Usuários', icon: Users },
+    ...(isAdmin ? [{ id: 'users', label: 'Usuários', icon: Users }] : []),
     { id: 'chat', label: 'LDAChat', icon: MessageCircle },
   ];
 
