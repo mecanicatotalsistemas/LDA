@@ -39,33 +39,61 @@ const DegradationAnalysis: React.FC<DegradationAnalysisProps> = ({
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      const text = e.target?.result as string;
-      const lines = text.split('\n').filter(line => line.trim());
-      const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
-      
-      const timeIndex = headers.findIndex(h => h.includes('time') || h.includes('tempo'));
-      const valueIndex = headers.findIndex(h => h.includes('value') || h.includes('valor') || h.includes('medição'));
-      const statusIndex = headers.findIndex(h => h.includes('status'));
+      try {
+        const text = e.target?.result as string;
+        const lines = text.split('\n').filter(line => line.trim());
 
-      if (timeIndex === -1 || valueIndex === -1) {
-        alert('Arquivo deve conter colunas "time" e "value"');
-        return;
-      }
-
-      const parsedData: DegradationPoint[] = [];
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim());
-        const time = parseFloat(values[timeIndex]);
-        const value = parseFloat(values[valueIndex]);
-        const status = statusIndex >= 0 ? parseInt(values[statusIndex]) : 0;
-        
-        if (!isNaN(time) && !isNaN(value)) {
-          parsedData.push({ time, value, status });
+        if (lines.length < 2) {
+          alert('Arquivo CSV vazio ou com formato incorreto');
+          event.target.value = '';
+          return;
         }
+
+        const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+
+        const timeIndex = headers.findIndex(h => h.includes('time') || h.includes('tempo'));
+        const valueIndex = headers.findIndex(h => h.includes('value') || h.includes('valor') || h.includes('medição') || h.includes('medicao'));
+        const statusIndex = headers.findIndex(h => h.includes('status'));
+
+        if (timeIndex === -1 || valueIndex === -1) {
+          alert(`Arquivo deve conter colunas "time" e "value".\nColunas encontradas: ${headers.join(', ')}`);
+          event.target.value = '';
+          return;
+        }
+
+        const parsedData: DegradationPoint[] = [];
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim());
+          const time = parseFloat(values[timeIndex]);
+          const value = parseFloat(values[valueIndex]);
+          const status = statusIndex >= 0 ? parseInt(values[statusIndex]) : 0;
+
+          if (!isNaN(time) && !isNaN(value)) {
+            parsedData.push({ time, value, status });
+          }
+        }
+
+        if (parsedData.length === 0) {
+          alert('Nenhum dado válido encontrado no arquivo CSV');
+          event.target.value = '';
+          return;
+        }
+
+        onDataChange(parsedData.sort((a, b) => a.time - b.time));
+        alert(`${parsedData.length} registros importados com sucesso!`);
+      } catch (error) {
+        console.error('Erro ao processar arquivo:', error);
+        alert('Erro ao processar arquivo CSV. Verifique o formato.');
       }
 
-      onDataChange(parsedData.sort((a, b) => a.time - b.time));
+      event.target.value = '';
     };
+
+    reader.onerror = () => {
+      alert('Erro ao ler o arquivo');
+      event.target.value = '';
+    };
+
     reader.readAsText(file);
   }, [onDataChange]);
 
