@@ -89,40 +89,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('Starting sign in process...');
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      console.log('Auth response:', { hasData: !!data, hasError: !!error });
-
-      if (error) {
-        console.error('Auth error:', error);
-        return { error };
-      }
+      if (error) return { error };
 
       if (data.user) {
-        console.log('User authenticated, checking active status for:', data.user.id);
-
         const { data: isActiveData, error: checkError } = await supabase
           .rpc('check_user_active', { user_id: data.user.id });
-
-        console.log('Active status check:', { isActiveData, checkError });
 
         if (checkError) {
           console.error('Error checking user status:', checkError);
           await supabase.auth.signOut();
-          return {
-            error: {
-              name: 'StatusCheckError',
-              message: 'Erro ao verificar status do usuário: ' + checkError.message
-            } as AuthError
-          };
+          return { error: { message: 'Erro ao verificar status do usuário' } as AuthError };
         }
 
         if (isActiveData === false) {
-          console.log('User is inactive, signing out...');
           await supabase.auth.signOut();
           return {
             error: {
@@ -132,8 +116,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } as AuthError
           };
         }
-
-        console.log('User is active, login successful');
       }
 
       return { error: null };
