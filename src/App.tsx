@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, Calculator, BarChart3, FileText, Database, TrendingUp, RefreshCw, MessageCircle, TrendingDown, AlertTriangle, Activity, Users, LogOut, User as UserIcon } from 'lucide-react';
+import { Upload, Calculator, BarChart3, FileText, Database, TrendingUp, RefreshCw, MessageCircle, TrendingDown, AlertTriangle, Activity, Users, LogOut, User as UserIcon, History, Save } from 'lucide-react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import DataInput from './components/DataInput';
@@ -12,10 +12,12 @@ import DegradationAnalysis from './components/DegradationAnalysis';
 import FailureProbabilityChart from './components/FailureProbabilityChart';
 import DegradationCurveChart from './components/DegradationCurveChart';
 import UserManagement from './components/UserManagement';
+import AnalysisHistory from './components/AnalysisHistory';
 import Login from './components/Login';
 import Register from './components/Register';
 import { useAuth } from './contexts/AuthContext';
 import { DataPoint, DistributionResult, AnalysisResults } from './types';
+import { saveDistributionAnalysis } from './utils/analysisStorage';
 
 function App() {
   const { user, profile, loading: authLoading, signOut } = useAuth();
@@ -52,7 +54,43 @@ function App() {
   }, []);
   const isAdmin = profile?.role === 'admin';
 
+  const handleSaveAnalysis = useCallback(async () => {
+    if (!analysisResults || data.length === 0) {
+      alert('Não há análise para salvar. Execute uma análise primeiro.');
+      return;
+    }
+
+    const title = equipmentName
+      ? `${equipmentName} - ${new Date().toLocaleDateString()}`
+      : `Análise ${new Date().toLocaleDateString()}`;
+
+    const result = await saveDistributionAnalysis(
+      title,
+      data,
+      analysisResults,
+      selectedDistribution,
+      equipmentName
+    );
+
+    if (result.success) {
+      alert('Análise salva com sucesso!');
+    } else {
+      alert('Erro ao salvar análise: ' + result.error);
+    }
+  }, [analysisResults, data, selectedDistribution, equipmentName]);
+
+  const handleLoadAnalysis = useCallback((analysis: any) => {
+    if (analysis.analysis_type === 'distribution') {
+      setData(analysis.input_data.data || []);
+      setAnalysisResults(analysis.results_data);
+      setSelectedDistribution(analysis.input_data.selectedDistribution || 'weibull2');
+      setEquipmentName(analysis.input_data.equipmentName || '');
+      setActiveTab('charts');
+    }
+  }, []);
+
   const tabs = [
+    { id: 'history', label: 'Histórico', icon: History },
     { id: 'data', label: 'Dados', icon: Database },
     { id: 'distribution', label: 'Distribuição', icon: TrendingUp },
     { id: 'charts', label: 'Gráficos', icon: BarChart3 },
@@ -128,7 +166,16 @@ function App() {
                 placeholder="Ex: Bomba Centrífuga 001, Motor Elétrico A1, etc."
               />
             </div>
-            <div className="flex items-end">
+            <div className="flex items-end space-x-3">
+              {analysisResults && data.length > 0 && (
+                <button
+                  onClick={handleSaveAnalysis}
+                  className="flex items-center space-x-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  <Save className="w-5 h-5" />
+                  <span>Salvar Análise</span>
+                </button>
+              )}
               <button
                 onClick={handleNewAnalysis}
                 className="flex items-center space-x-2 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
@@ -173,9 +220,13 @@ function App() {
 
           {/* Tab Content */}
           <div className="p-6">
+            {activeTab === 'history' && (
+              <AnalysisHistory onLoadAnalysis={handleLoadAnalysis} />
+            )}
+
             {activeTab === 'data' && (
-              <DataInput 
-                data={data} 
+              <DataInput
+                data={data}
                 onDataChange={handleDataChange}
                 onAnalysisComplete={handleAnalysisComplete}
                 setIsLoading={setIsLoading}
