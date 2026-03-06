@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { TrendingDown, Plus, Trash2, Play, Download, Upload, Target, Activity } from 'lucide-react';
+import { TrendingDown, Plus, Trash2, Play, Download, Upload, Target, Activity, Save } from 'lucide-react';
 import { DegradationPoint, DegradationResults } from '../types';
 import { performDegradationAnalysis } from '../utils/degradationCalculations';
+import { saveDegradationAnalysisDetailed } from '../utils/analysisStorage';
 import DegradationCharts from './DegradationCharts';
 import DegradationReport from './DegradationReport';
 
@@ -104,6 +105,35 @@ const DegradationAnalysis: React.FC<DegradationAnalysisProps> = ({ equipmentName
     }
   }, [data, failureLimit, equipmentName]);
 
+  const saveCurrentAnalysis = useCallback(async () => {
+    if (!results) {
+      alert('Nenhuma análise para salvar. Execute a análise primeiro.');
+      return;
+    }
+
+    const title = equipmentName
+      ? `Degradação - ${equipmentName} - ${new Date().toLocaleDateString()}`
+      : `Análise de Degradação - ${new Date().toLocaleDateString()}`;
+
+    try {
+      const result = await saveDegradationAnalysisDetailed(
+        title,
+        equipmentName || 'Equipamento não especificado',
+        parseFloat(failureLimit),
+        data,
+        results
+      );
+
+      if (result.success) {
+        alert('Análise de degradação salva com sucesso!');
+      } else {
+        alert('Erro ao salvar análise: ' + result.error);
+      }
+    } catch (error: any) {
+      alert('Erro ao salvar análise: ' + error.message);
+    }
+  }, [results, equipmentName, failureLimit, data]);
+
   const downloadTemplate = useCallback(() => {
     const csvContent = 'time,value,status\n0,1.0,0\n100,1.2,0\n200,1.5,0\n300,1.8,0\n400,2.1,0';
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -117,22 +147,46 @@ const DegradationAnalysis: React.FC<DegradationAnalysisProps> = ({ equipmentName
 
   if (activeView === 'charts' && results) {
     return (
-      <DegradationCharts 
-        results={results} 
-        data={data}
-        onBack={() => setActiveView('input')}
-        onViewReport={() => setActiveView('report')}
-      />
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <div />
+          <button
+            onClick={saveCurrentAnalysis}
+            className="flex items-center space-x-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            <Save className="w-5 h-5" />
+            <span>Salvar Análise</span>
+          </button>
+        </div>
+        <DegradationCharts
+          results={results}
+          data={data}
+          onBack={() => setActiveView('input')}
+          onViewReport={() => setActiveView('report')}
+        />
+      </div>
     );
   }
 
   if (activeView === 'report' && results) {
     return (
-      <DegradationReport 
-        results={results} 
-        data={data}
-        onBack={() => setActiveView('charts')}
-      />
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <div />
+          <button
+            onClick={saveCurrentAnalysis}
+            className="flex items-center space-x-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            <Save className="w-5 h-5" />
+            <span>Salvar Análise</span>
+          </button>
+        </div>
+        <DegradationReport
+          results={results}
+          data={data}
+          onBack={() => setActiveView('charts')}
+        />
+      </div>
     );
   }
 

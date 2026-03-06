@@ -132,3 +132,128 @@ export const saveDegradationAnalysis = async (
     notes,
   });
 };
+
+export const saveDegradationAnalysisDetailed = async (
+  title: string,
+  equipmentName: string,
+  failureLimit: number,
+  dataPoints: any[],
+  results: any,
+  notes?: string
+) => {
+  try {
+    const { data: session } = await supabase.auth.getSession();
+
+    if (!session.session?.user) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    const { data: savedAnalysis, error } = await supabase
+      .from('degradation_analyses')
+      .insert({
+        user_id: session.session.user.id,
+        title,
+        equipment_name: equipmentName,
+        failure_limit: failureLimit,
+        data_points: dataPoints,
+        models: results.models,
+        best_model: results.bestModel,
+        estimated_failure_time: results.estimatedFailureTime,
+        r_squared: results.models[results.bestModel]?.rSquared || 0,
+        projected_data: results.projectedData,
+        data_stats: results.dataStats,
+        notes: notes || null,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return { success: true, data: savedAnalysis };
+  } catch (error: any) {
+    console.error('Erro ao salvar análise de degradação:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const loadDegradationAnalyses = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('degradation_analyses')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return { success: true, data };
+  } catch (error: any) {
+    console.error('Erro ao carregar análises de degradação:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+export const deleteDegradationAnalysis = async (id: string) => {
+  try {
+    const { error } = await supabase
+      .from('degradation_analyses')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Erro ao deletar análise de degradação:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const saveEquipmentConfiguration = async (
+  equipmentName: string,
+  equipmentType: string,
+  defaultFailureLimit?: number,
+  defaultParameters?: any
+) => {
+  try {
+    const { data: session } = await supabase.auth.getSession();
+
+    if (!session.session?.user) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    const { data: savedConfig, error } = await supabase
+      .from('equipment_configurations')
+      .upsert({
+        user_id: session.session.user.id,
+        equipment_name: equipmentName,
+        equipment_type: equipmentType,
+        default_failure_limit: defaultFailureLimit,
+        default_parameters: defaultParameters || {},
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return { success: true, data: savedConfig };
+  } catch (error: any) {
+    console.error('Erro ao salvar configuração de equipamento:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const loadEquipmentConfigurations = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('equipment_configurations')
+      .select('*')
+      .order('equipment_name');
+
+    if (error) throw error;
+
+    return { success: true, data };
+  } catch (error: any) {
+    console.error('Erro ao carregar configurações de equipamentos:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
