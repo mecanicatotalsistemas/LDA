@@ -79,13 +79,27 @@ function App() {
     }
   }, [analysisResults, data, selectedDistribution, equipmentName]);
 
-  const handleLoadAnalysis = useCallback((analysis: any) => {
+  const handleLoadAnalysis = useCallback(async (analysis: any) => {
     if (analysis.analysis_type === 'distribution') {
-      setData(analysis.input_data.data || []);
-      setAnalysisResults(analysis.results_data);
-      setSelectedDistribution(analysis.input_data.selectedDistribution || 'weibull2');
+      const loadedData = analysis.input_data.data || [];
+      setData(loadedData);
       setEquipmentName(analysis.input_data.equipmentName || '');
-      setActiveTab('charts');
+      setSelectedDistribution(analysis.input_data.selectedDistribution || 'weibull2');
+
+      if (loadedData.length > 0) {
+        setIsLoading(true);
+        try {
+          const { performDistributionAnalysis } = await import('./utils/calculations');
+          const results = await performDistributionAnalysis(loadedData);
+          setAnalysisResults(results);
+          setActiveTab('charts');
+        } catch (error) {
+          console.error('Erro ao reprocessar análise:', error);
+          alert('Erro ao carregar análise');
+        } finally {
+          setIsLoading(false);
+        }
+      }
     }
   }, []);
 
