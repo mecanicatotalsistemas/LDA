@@ -31,10 +31,7 @@ const UserManagement: React.FC = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.rpc('get_all_profiles');
 
       if (error) throw error;
 
@@ -65,10 +62,10 @@ const UserManagement: React.FC = () => {
 
     try {
       setActionLoading(userId);
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_active: !currentStatus })
-        .eq('id', userId);
+      const { error } = await supabase.rpc('update_user_status', {
+        target_user_id: userId,
+        new_status: !currentStatus
+      });
 
       if (error) throw error;
 
@@ -98,10 +95,10 @@ const UserManagement: React.FC = () => {
 
     try {
       setActionLoading(userId);
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: newRole })
-        .eq('id', userId);
+      const { error } = await supabase.rpc('update_user_role', {
+        target_user_id: userId,
+        new_role: newRole
+      });
 
       if (error) throw error;
 
